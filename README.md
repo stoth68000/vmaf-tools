@@ -29,7 +29,7 @@ picvmaf -i vmaf.csv -o VMAF000001.png -c 1
 picvmaf -i vmaf.csv -o VMAF000002.png -c 2 .... etc
 ```
 
-## 4. For each REF and DIST png frame pair, create a difference PNG
+## 4. For each REF and DIST PNG frame pair, create a difference PNG
 ```
 picdiff -n -t0 -1 REF000000.png -2 DIST000000.png -o DIFF000000.png
 picdiff -n -t0 -1 REF000001.png -2 DIST000001.png -o DIFF000001.png .... etc
@@ -41,7 +41,7 @@ pic2x2 -t0 -1 REF000000.png -2 DIST000000.png -3 VMAF000000.png -4 DIFF000000.pn
 pic2x2 -t0 -1 REF000001.png -2 DIST000001.png -3 VMAF000001.png -4 DIFF000001.png -o COMPOSITE000001.png .... etc
 ```
 
-## 6. Being all of the composite 2x2 pngs together into a final viewable video.
+## 6. Bring all of the composite 2x2 pngs together into a final viewable video.
 ```
 ffmpeg -y -r 29.97 -pattern_type glob -i 'COMPOSITE*.png' \
 	-c:v libx264 -threads 8 -preset veryfast -b:v 40M \
