@@ -31,6 +31,14 @@ static struct {
 	{ 1920, 1080, (1920 * 1080 * 3) / 2, },
 };
 
+double compute_psnr(double mse, double max_pixel_value)
+{
+    if (mse == 0) {
+        return INFINITY;  // Perfect match
+    }
+    return 10.0 * log10((max_pixel_value * max_pixel_value) / mse);
+}
+
 double compute_luma_mse(const cv::Mat &frame1, const cv::Mat &frame2)
 {
     if (frame1.size() != frame2.size() || frame1.type() != frame2.type()) {
@@ -159,8 +167,15 @@ int main(int argc, char *argv[])
 		Mat v2_mat = Mat(chroma_height, chroma_width, CV_8UC1, v2);
 		double v_mse = compute_luma_mse(v1_mat, v2_mat);
 
+		const double max_pixel_value = 255.0;
+		double y_psnr = compute_psnr(y_mse, max_pixel_value);
+		double u_psnr = compute_psnr(u_mse, max_pixel_value);
+		double v_psnr = compute_psnr(v_mse, max_pixel_value);
+
 		if (y_mse >= 0.0) {
-			printf("frame %08d, Y %8.2f, U %8.2f, V %8.2f\n", nr, y_mse, u_mse, v_mse);
+			printf("frame %08d, mse Y %8.2f, U %8.2f, V %8.2f, psnr(dB) Y %8.2f, U %8.2f, V %8.2f\n", nr,
+				y_mse, u_mse, v_mse,
+				y_psnr, u_psnr, v_psnr);
 		}
 		nr++;
 	}
