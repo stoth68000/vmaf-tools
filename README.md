@@ -1,5 +1,6 @@
 # vmaf-tools
-Tools related to VMAF video analysis
+Tools related to VMAF video analysis.
+BSD licensed.
 
 * pic2x2 - Read four PNGS and create a single grid combined PNG output.
 * picvmaf- Read vmaf stats files and produce a PNG output, showing core and a red highlight line
