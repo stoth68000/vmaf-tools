@@ -49,7 +49,7 @@ double compute_luma_mse(const cv::Mat &frame1, const cv::Mat &frame2)
 
 void usage()
 {
-        printf("A tool to generate luma MSE for a pair of YUV files, containing many frames.\n");
+        printf("A tool to generate mse for a pair of YUV files, containing many frames.\n");
         printf("Usage:\n");
         printf("  -1 file1.yuv\n");
         printf("  -2 file2.yuv\n");
@@ -142,10 +142,25 @@ int main(int argc, char *argv[])
 
 		Mat y1 = Mat(ctx->height, ctx->width, CV_8UC1, b1);
 		Mat y2 = Mat(ctx->height, ctx->width, CV_8UC1, b2);
+		double y_mse = compute_luma_mse(y1, y2);
 
-		double mse = compute_luma_mse(y1, y2);
-		if (mse >= 0.0) {
-			printf("frame %08d, luma MSE %8.2f\n", nr, mse);
+		int chroma_width = ctx->width / 2;
+		int chroma_height = ctx->height / 2;
+
+		unsigned char *u1 = b1 + (ctx->width * ctx->height);
+		unsigned char *u2 = b2 + (ctx->width * ctx->height);
+		Mat u1_mat = Mat(chroma_height, chroma_width, CV_8UC1, u1);
+		Mat u2_mat = Mat(chroma_height, chroma_width, CV_8UC1, u2);
+		double u_mse = compute_luma_mse(u1_mat, u2_mat);
+
+		unsigned char *v1 = u1 + (chroma_width * chroma_height);
+		unsigned char *v2 = u2 + (chroma_width * chroma_height);
+		Mat v1_mat = Mat(chroma_height, chroma_width, CV_8UC1, v1);
+		Mat v2_mat = Mat(chroma_height, chroma_width, CV_8UC1, v2);
+		double v_mse = compute_luma_mse(v1_mat, v2_mat);
+
+		if (y_mse >= 0.0) {
+			printf("frame %08d, Y %8.2f, U %8.2f, V %8.2f\n", nr, y_mse, u_mse, v_mse);
 		}
 		nr++;
 	}
