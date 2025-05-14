@@ -6,7 +6,7 @@ Tools related to VMAF video analysis
 * picdiff- Read two PNGS, compute a grey normalized diff map, output the diffmap to PNG.
 
 ## Assumptions
-* You already have two YUV 420p files, which are frame aligned (by hand).
+* You already have two YUV 420p files, which are frame aligned (by hand). IE, the first frame of each YUV file is from the same point in time, but from a different workflow.
 * reference.yuv
 * distorted.yuv
   
