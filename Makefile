@@ -3,7 +3,7 @@
 
 INC=-g -I/usr/include/opencv4 -Wl,--copy-dt-needed-entries
 LIB=-lopencv_core -lm -lopencv_highgui -lopencv_imgproc -lopencv_imgcodecs
-BINS=pic2x2 picdiff picvmaf
+BINS=pic2x2 picdiff picvmaf yuvmse
 
 all:	$(BINS)
 
@@ -14,6 +14,9 @@ picdiff: picdiff.c
 	g++ $(INC) $(LIB) $@.c -o $@ $(LIB)
 
 picvmaf: picvmaf.c
+	g++ $(INC) $(LIB) $@.c -o $@ $(LIB)
+
+yuvmse: yuvmse.c
 	g++ $(INC) $(LIB) $@.c -o $@ $(LIB)
 
 install:	all
