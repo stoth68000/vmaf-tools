@@ -122,8 +122,14 @@ int compute_sequence(struct tool_context_s *ctx)
 
 	/* Check the files are a perfect multiple of frame_size */
 	struct stat s1, s2;
-	stat(ctx->fn[0], &s1);
-	stat(ctx->fn[1], &s2);
+	if (stat(ctx->fn[0], &s1) < 0) {
+		fprintf(stderr, "file input 1 not found, aborting\n");
+		exit(1);
+	}
+	if (stat(ctx->fn[1], &s2) < 0) {
+		fprintf(stderr, "file input 2 not found, aborting\n");
+		exit(1);
+	}
 	if (s1.st_size != s2.st_size) {
 		fprintf(stderr, "file input 1 isn't the same size as input 2, aborting\n");
 		exit(1);
@@ -220,8 +226,14 @@ int compute_sidebyside(struct tool_context_s *ctx)
 
 	/* Check the files are a perfect multiple of frame_size */
 	struct stat s1, s2;
-	stat(ctx->fn[0], &s1);
-	stat(ctx->fn[1], &s2);
+	if (stat(ctx->fn[0], &s1) < 0) {
+		fprintf(stderr, "file input 1 not found, aborting\n");
+		exit(1);
+	}
+	if (stat(ctx->fn[1], &s2) < 0) {
+		fprintf(stderr, "file input 2 not found, aborting\n");
+		exit(1);
+	}
 	if (s1.st_size != s2.st_size) {
 		fprintf(stderr, "file input 1 isn't the same size as input 2, aborting\n");
 		exit(1);
