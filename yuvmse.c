@@ -35,6 +35,26 @@ static struct {
 	{ 3840, 2160, (1920 * 1080 * 3) / 2, },
 };
 
+double compute_sharpness(const cv::Mat &image)
+{
+	Mat gray;
+	if (image.channels() == 3) {
+		cvtColor(image, gray, COLOR_BGR2GRAY);
+	} else {
+		gray = image.clone();
+	}
+
+	Mat laplacian;
+	Laplacian(gray, laplacian, CV_64F);
+
+	// Calculate the variance of the Laplacian
+	Scalar mean, stddev;
+	meanStdDev(laplacian, mean, stddev);
+
+	// Variance is the square of the standard deviation
+	return stddev[0] * stddev[0];
+}
+
 double compute_psnr(double mse, double max_pixel_value)
 {
     if (mse == 0) {
@@ -61,7 +81,7 @@ double compute_luma_mse(const cv::Mat &frame1, const cv::Mat &frame2)
 
 void usage()
 {
-        printf("A tool to generate mse for a pair of YUV files, containing many frames.\n");
+        printf("A tool to generate mse/psnr/sharpness for a pair of YUV files, containing many frames.\n");
         printf("The bestmatch mode tries to match YUV frames within a window of -w frames, and you can.\n");
         printf("elect to skip -s #frames on file1 to try and find a best match for misaligned YUV files.\n");
         printf("Usage:\n");
@@ -79,6 +99,7 @@ struct frame_stats_s
 {
 	double y_mse, u_mse, v_mse;
 	double y_psnr, u_psnr, v_psnr;
+	double sharpness[2];
 };
 
 int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned char *b2, struct frame_stats_s *stats)
@@ -110,10 +131,13 @@ int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned 
 	stats->u_psnr = compute_psnr(stats->u_mse, max_pixel_value);
 	stats->v_psnr = compute_psnr(stats->v_mse, max_pixel_value);
 
+	stats->sharpness[0] = compute_sharpness(y1);
+	stats->sharpness[1] = compute_sharpness(y2);
+
 	return 0; /* Success */
 }
 
-int compute_sequence(struct tool_context_s *ctx)
+int compute_sequence_bestmatch(struct tool_context_s *ctx)
 {
 	double low_y_mse = 60000.0;
 	int low_frame = 0;
@@ -208,7 +232,7 @@ int compute_sequence(struct tool_context_s *ctx)
 	return 0;
 }
 
-int compute_sidebyside(struct tool_context_s *ctx)
+int compute_sequence_mse(struct tool_context_s *ctx)
 {
 	FILE *fh1 = fopen(ctx->fn[0], "rb");
 	if (!fh1) {
@@ -252,6 +276,7 @@ int compute_sidebyside(struct tool_context_s *ctx)
 
 	int nr = 0;
 
+	int line = 0;
 	while(1) {
 		size_t l1 = fread(b1, 1, frame_size, fh1);
 		size_t l2 = fread(b2, 1, frame_size, fh2);
@@ -263,11 +288,25 @@ int compute_sidebyside(struct tool_context_s *ctx)
 		struct frame_stats_s stats;
 		compute_frame_stats(ctx, b1, b2, &stats);
 
-		if (stats.y_mse >= 0.0) {
-			printf("frame %08d, mse Y %8.2f, U %8.2f, V %8.2f, psnr(dB) Y %8.2f, U %8.2f, V %8.2f\n", nr,
-				stats.y_mse, stats.u_mse, stats.v_mse,
-				stats.y_psnr, stats.u_psnr, stats.v_psnr);
+		if (line == 0) {
+			printf("%8s %9s %9s %9s %9s %9s %9s %9s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp");
+			printf("\n");
+			printf("%8s %9s %9s %9s %9s %9s %9s %9s %9s", "#     Nr", "Y", "U", "V", "Y", "U", "V", "f1", "f2");
+			printf("\n");
+			printf("#----------------------------------------------------------------------------------------\n");
 		}
+
+		if (line++ > 24) {
+			line = 0;
+		}
+
+		printf("%08d, %8.2f, %8.2f, %8.2f, %8.2f, %8.2f, %8.2f", nr,
+			stats.y_mse, stats.u_mse, stats.v_mse,
+			stats.y_psnr, stats.u_psnr, stats.v_psnr);
+
+		printf(", %8.2f, %8.2f", stats.sharpness[0], stats.sharpness[1]);
+
+		printf("\n");
 
 		nr++;
 	}
@@ -331,9 +370,10 @@ int main(int argc, char *argv[])
 	ctx->windowsize += ctx->skipframes;
 
 	if (ctx->bestmatch) {
-		int ret = compute_sequence(ctx);
-	} else {
-		int ret = compute_sidebyside(ctx);
+		int ret = compute_sequence_bestmatch(ctx);
+	}
+	else {
+		int ret = compute_sequence_mse(ctx);
 	}
 
 	return 0;
