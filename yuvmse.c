@@ -189,8 +189,10 @@ double compute_luma_mse(const cv::Mat &frame1, const cv::Mat &frame2)
 void usage()
 {
         printf("A tool to generate mse/psnr/sharpness/dct-hashes for a pair of YUV files, containing many frames.\n");
-        printf("The bestmatch mode tries to match YUV frames within a window of -w frames, and you can.\n");
+        printf("The bestmatch mode tries to match YUV frames within a window of -w frames, and you can\n");
         printf("elect to skip -s #frames on file1 to try and find a best match for misaligned YUV files.\n");
+        printf("The DCT hash match mode tries to match YUV frames within a window of -w frames\n");
+        printf("showing trimming instructions if avail.\n");
         printf("Usage:\n");
         printf("  -1 file1.yuv\n");
         printf("  -2 file2.yuv\n");
@@ -200,6 +202,7 @@ void usage()
         printf("  -b run best match and try to find frame offsets for best mse match\n");
         printf("    -w number of frames to process [def: 30] (bestmatch)\n");
         printf("    -s number of frames from input 1 to skip (bestmatch)\n");
+        printf("  -D run DCT hashes and try to find frame offsets for best aligned match\n");
 }
 
 struct frame_stats_s
@@ -523,6 +526,9 @@ int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 				ctx->fn[1], ctx->fn[1],
 				(ctx->width * ctx->height * 3) / 2, posB);
 		}
+		if (posA == 0 && posB == 0) {
+			printf("# No trimming instructions necessary, YUV is already aligned.\n");
+		}
 	}
 
 	for (int i = 0; i < MAX_INPUTS; i++) {
@@ -671,6 +677,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 		case 'b':
+			ctx->dcthashmatch = 0;
 			ctx->bestmatch = 1;
 			break;
 		case 'v':
@@ -684,6 +691,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'D':
 			ctx->dcthashmatch = 1;
+			ctx->bestmatch = 0;
 			break;
 		case 'H':
 			ctx->height = atoi(optarg);
