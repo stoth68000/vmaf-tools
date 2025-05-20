@@ -142,7 +142,7 @@ double compute_luma_mse(const cv::Mat &frame1, const cv::Mat &frame2)
 
 void usage()
 {
-        printf("A tool to generate mse/psnr/sharpness for a pair of YUV files, containing many frames.\n");
+        printf("A tool to generate mse/psnr/sharpness/dct-hashes for a pair of YUV files, containing many frames.\n");
         printf("The bestmatch mode tries to match YUV frames within a window of -w frames, and you can.\n");
         printf("elect to skip -s #frames on file1 to try and find a best match for misaligned YUV files.\n");
         printf("Usage:\n");
