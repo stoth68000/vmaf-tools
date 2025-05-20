@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -34,6 +35,66 @@ static struct {
 	{ 1920, 1080, (1920 * 1080 * 3) / 2, },
 	{ 3840, 2160, (1920 * 1080 * 3) / 2, },
 };
+
+uint64_t computeDCTHash(const Mat& image)
+{
+	Mat resized, floatImage, dctImage;
+
+	/* Get the image down to a meaningful 32x32 sample */
+	resize(image, resized, Size(32, 32), 0, 0, INTER_AREA);
+	//cv::imwrite("out2.png", resized, { cv::ImwriteFlags::IMWRITE_PNG_COMPRESSION, 0 });
+
+	/* DCT func needs floats, convert to */
+	resized.convertTo(floatImage, CV_32F); // Convert to float for DCT
+	dct(floatImage, dctImage);
+
+	/* Get the dct block from the dct'd image */
+	Mat dctBlock = dctImage(Rect(0, 0, 8, 8));
+
+	int idx = 0;
+	float values[64];
+#if 0
+	printf("DCT 8x8 Block:\n");
+#endif
+	for (int i = 0; i < 8; ++i) {
+		for (int j = 0; j < 8; ++j) {
+#if 0
+			printf("%7.2f ", dctBlock.at<float>(i, j));
+#endif
+			values[i * 8 + j] = dctBlock.at<float>(i, j);
+		}
+#if 0
+		printf("\n");
+#endif
+	}
+
+	/* Get the high and low medians, be careful not to disrupt
+	 * the values array, leave them unsorted. */
+	float temp[64];
+	std::copy(values, values + 64, temp);
+	std::nth_element(temp, temp + 31, temp + 64);
+	float low = temp[31];
+	std::nth_element(temp, temp + 32, temp + 64);
+	float high = temp[32];
+
+	float median = (low + high) / 2.0f;
+
+#if 0
+	printf("median %f h %f l %f\n", median, high, low);
+#endif
+
+	/* Compute the hash */
+	uint64_t hash = 0;
+	for (int i = 0; i < 64; ++i) {
+		if (values[i] > median) {
+			hash |= (1ULL << (63 - i));
+		}
+	}
+#if 0
+	printf("DCT Hash: %" PRIx64 "\n", hash);
+#endif
+	return hash;
+}
 
 double compute_sharpness(const cv::Mat &image)
 {
@@ -100,14 +161,20 @@ struct frame_stats_s
 	double y_mse, u_mse, v_mse;
 	double y_psnr, u_psnr, v_psnr;
 	double sharpness[2];
+	uint64_t hash[2];
 };
 
 int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned char *b2, struct frame_stats_s *stats)
 {
+	// MMM
 	memset(stats, 0, sizeof(*stats));
 
 	Mat y1 = Mat(ctx->height, ctx->width, CV_8UC1, b1);
 	Mat y2 = Mat(ctx->height, ctx->width, CV_8UC1, b2);
+
+	Mat a1 = Mat(ctx->height, ctx->width, CV_8UC1, b1);
+	Mat a2 = Mat(ctx->height, ctx->width, CV_8UC1, b2);
+
 	stats->y_mse = compute_luma_mse(y1, y2);
 
 	int chroma_width = ctx->width / 2;
@@ -133,6 +200,9 @@ int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned 
 
 	stats->sharpness[0] = compute_sharpness(y1);
 	stats->sharpness[1] = compute_sharpness(y2);
+
+	stats->hash[0] = computeDCTHash(y1);
+	stats->hash[1] = computeDCTHash(y2);
 
 	return 0; /* Success */
 }
@@ -289,11 +359,12 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 		compute_frame_stats(ctx, b1, b2, &stats);
 
 		if (line == 0) {
-			printf("%8s %9s %9s %9s %9s %9s %9s %9s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp");
+			printf("%8s %9s %9s %9s %9s %9s %9s %9s %27s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp", "DCT Hash");
 			printf("\n");
 			printf("%8s %9s %9s %9s %9s %9s %9s %9s %9s", "#     Nr", "Y", "U", "V", "Y", "U", "V", "f1", "f2");
+			printf("%18s %17s", "f1", "f2");
 			printf("\n");
-			printf("#----------------------------------------------------------------------------------------\n");
+			printf("#---------------------------------------------------------------------------------------------------------------------------\n");
 		}
 
 		if (line++ > 24) {
@@ -304,7 +375,8 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 			stats.y_mse, stats.u_mse, stats.v_mse,
 			stats.y_psnr, stats.u_psnr, stats.v_psnr);
 
-		printf(", %8.2f, %8.2f", stats.sharpness[0], stats.sharpness[1]);
+		printf(", %8.2f, %8.2f, %" PRIx64 ", %" PRIx64 "",
+			stats.sharpness[0], stats.sharpness[1], stats.hash[0], stats.hash[1]);
 
 		printf("\n");
 
@@ -376,6 +448,11 @@ int main(int argc, char *argv[])
 		int ret = compute_sequence_mse(ctx);
 	}
 
+	for (int i = 0; i < MAX_INPUTS; i++) {
+		if (ctx->fn[i]) {
+			free(ctx->fn[i]);
+		}
+	}
 	return 0;
 }
 
