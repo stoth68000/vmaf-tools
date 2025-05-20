@@ -15,6 +15,9 @@ using namespace cv;
 struct tool_context_s {
 #define MAX_INPUTS 2
 	char *fn[MAX_INPUTS];
+	uint64_t *hashes[MAX_INPUTS];
+	int hash_count[MAX_INPUTS];
+
 	int verbose;
 	int width;
 	int height;
@@ -22,6 +25,7 @@ struct tool_context_s {
 	int windowsize;
 	int bestmatch;
 	int dimension_defaults; /* 1, defaults, 0 = user supplied, 2 = detected */
+	int dcthashmatch;
 };
 
 static struct {
@@ -210,12 +214,12 @@ int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned 
 	memset(stats, 0, sizeof(*stats));
 
 	Mat y1 = Mat(ctx->height, ctx->width, CV_8UC1, b1);
-	Mat y2 = Mat(ctx->height, ctx->width, CV_8UC1, b2);
 
-	Mat a1 = Mat(ctx->height, ctx->width, CV_8UC1, b1);
-	Mat a2 = Mat(ctx->height, ctx->width, CV_8UC1, b2);
-
-	stats->y_mse = compute_luma_mse(y1, y2);
+	Mat y2;
+	if (b2) {
+		y2 = Mat(ctx->height, ctx->width, CV_8UC1, b2);
+		stats->y_mse = compute_luma_mse(y1, y2);
+	}
 
 	int chroma_width = ctx->width / 2;
 	int chroma_height = ctx->height / 2;
@@ -224,25 +228,35 @@ int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned 
 	unsigned char *u2 = b2 + (ctx->width * ctx->height);
 
 	Mat u1_mat = Mat(chroma_height, chroma_width, CV_8UC1, u1);
-	Mat u2_mat = Mat(chroma_height, chroma_width, CV_8UC1, u2);
-	stats->u_mse = compute_luma_mse(u1_mat, u2_mat);
+	if (b2) {
+		Mat u2_mat = Mat(chroma_height, chroma_width, CV_8UC1, u2);
+		stats->u_mse = compute_luma_mse(u1_mat, u2_mat);
+	}
 
 	unsigned char *v1 = u1 + (chroma_width * chroma_height);
 	unsigned char *v2 = u2 + (chroma_width * chroma_height);
 	Mat v1_mat = Mat(chroma_height, chroma_width, CV_8UC1, v1);
-	Mat v2_mat = Mat(chroma_height, chroma_width, CV_8UC1, v2);
-	stats->v_mse = compute_luma_mse(v1_mat, v2_mat);
+	if (b2) {
+		Mat v2_mat = Mat(chroma_height, chroma_width, CV_8UC1, v2);
+		stats->v_mse = compute_luma_mse(v1_mat, v2_mat);
+	}
 
-	const double max_pixel_value = 255.0;
-	stats->y_psnr = compute_psnr(stats->y_mse, max_pixel_value);
-	stats->u_psnr = compute_psnr(stats->u_mse, max_pixel_value);
-	stats->v_psnr = compute_psnr(stats->v_mse, max_pixel_value);
+	if (b2) {
+		const double max_pixel_value = 255.0;
+		stats->y_psnr = compute_psnr(stats->y_mse, max_pixel_value);
+		stats->u_psnr = compute_psnr(stats->u_mse, max_pixel_value);
+		stats->v_psnr = compute_psnr(stats->v_mse, max_pixel_value);
+	}
 
 	stats->sharpness[0] = compute_sharpness(y1);
-	stats->sharpness[1] = compute_sharpness(y2);
+	if (b2) {
+		stats->sharpness[1] = compute_sharpness(y2);
+	}
 
 	stats->hash[0] = computeDCTHash(ctx, y1);
-	stats->hash[1] = computeDCTHash(ctx, y2);
+	if (b2) {
+		stats->hash[1] = computeDCTHash(ctx, y2);
+	}
 
 	return 0; /* Success */
 }
@@ -338,6 +352,121 @@ int compute_sequence_bestmatch(struct tool_context_s *ctx)
 	free(b1);
 	free(b2);
 	fclose(fh1);
+
+	return 0;
+}
+
+int compute_sequence_dct_hashes_input(struct tool_context_s *ctx, int inputnr, uint64_t **hashes, int *hash_count)
+{
+	FILE *fh1 = fopen(ctx->fn[inputnr], "rb");
+	if (!fh1) {
+		fprintf(stderr, "input file %d not found, aborting\n", inputnr);
+		exit(1);
+	}
+
+	int frame_size = (ctx->width * ctx->height * 3) / 2; /* YUV420 */
+
+	struct stat s;
+	stat(ctx->fn[inputnr], &s);
+	if (s.st_size % frame_size) {
+		fprintf(stderr, "file input %d isn't a perfect multiple of frame_size %d\n", inputnr, frame_size);
+		exit(1);
+	}
+
+	int frame_count = (s.st_size / frame_size) + 1;
+
+	uint64_t *hlist = (uint64_t *)malloc(sizeof(uint64_t) * frame_count);
+	if (hlist == NULL) {
+		fprintf(stderr, "unable to allocate memory for hashlist, aborting\n");
+		exit(1);
+	}
+
+	unsigned char *b1 = (unsigned char *)malloc(frame_size);
+	if (b1 == NULL) {
+		fprintf(stderr, "unable to allocate memory for frame, aborting\n");
+		exit(1);
+	}
+
+	int nr = 0;
+
+	int line = 0;
+	int skip_frames = ctx->skipframes;
+	while(1) {
+		size_t l1 = fread(b1, 1, frame_size, fh1);
+		if (l1 != frame_size) {
+			break;
+		}
+		if (skip_frames-- > 0) {
+			nr++;
+			continue;
+		}
+		if (nr > ctx->windowsize) {
+			break;
+		}
+
+		struct frame_stats_s stats;
+		compute_frame_stats(ctx, b1, NULL, &stats);
+
+		hlist[nr] = stats.hash[0];
+
+		printf("frame %08d, hash %" PRIx64 ", %s\n", nr, stats.hash[0], ctx->fn[inputnr]);
+
+		nr++;
+	}
+
+	free(b1);
+	fclose(fh1);
+
+	*hash_count = nr;
+	*hashes = hlist;
+
+	return 0; /* Success */
+}
+
+int compute_sequence_dct_hashes(struct tool_context_s *ctx)
+{
+	int inputs = 0;
+	for (int i = 0; i < MAX_INPUTS; i++) {
+		if (ctx->fn[i]) {
+			inputs++;
+			compute_sequence_dct_hashes_input(ctx, i, &ctx->hashes[i], &ctx->hash_count[i]);
+		}
+	}
+
+	for (int i = 0; i < MAX_INPUTS; i++) {
+		if (ctx->fn[i] && ctx->hashes[i]) {
+			for (int j = 0; j < ctx->hash_count[i]; j++) {
+				printf("frame %08d, hash %" PRIx64 ", %s\n", j, ctx->hashes[i][j], ctx->fn[i]);
+			}
+		}
+	}
+
+	/* Search hashes for input 2 and align with input 1 */
+	if (inputs > 1) {
+		/* Enumerate all input 1 hashes */
+		for (int h = 0; h < ctx->hash_count[0]; h++) {
+
+			/* Look for similar hases in other inputs */
+			for (int i = 1; i < inputs; i++) {
+				for (int j = 0; j < ctx->hash_count[i]; j++) {
+					int hd = hamming_distance(ctx->hashes[0][h], ctx->hashes[i][j]);
+
+					if (hd <= 1) {
+						printf("frame 0.%08d == frame %d.%08d\n", h, i, j);
+						//break;
+					}
+
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < MAX_INPUTS; i++) {
+		if (ctx->fn[i] && ctx->hashes[i]) {
+			free(ctx->hashes[i]);
+			ctx->hashes[i] = NULL;
+		}
+	}
 
 	return 0;
 }
@@ -450,6 +579,7 @@ void args_to_console(struct tool_context_s *ctx)
 	printf("# skipframes: %d\n", ctx->skipframes);
 	printf("# bestmatch: %d\n", ctx->bestmatch);
 	printf("# verbose: %d\n", ctx->verbose);
+	printf("# dcthashmatch: %d\n", ctx->dcthashmatch);
 }
 
 int main(int argc, char *argv[])
@@ -463,7 +593,7 @@ int main(int argc, char *argv[])
 
 	int ch, idx, ret;
 
-	while ((ch = getopt(argc, argv, "?h1:2:3:4:bs:vw:W:H:")) != -1) {
+	while ((ch = getopt(argc, argv, "?h1:2:3:4:bs:vw:DW:H:")) != -1) {
 		switch (ch) {
 		case '1':
 		case '2':
@@ -487,6 +617,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'w':
 			ctx->windowsize = atoi(optarg);
+			break;
+		case 'D':
+			ctx->dcthashmatch = 1;
 			break;
 		case 'H':
 			ctx->height = atoi(optarg);
@@ -514,8 +647,9 @@ int main(int argc, char *argv[])
 
 	if (ctx->bestmatch) {
 		int ret = compute_sequence_bestmatch(ctx);
-	}
-	else {
+	} else if (ctx->dcthashmatch) {
+		int ret = compute_sequence_dct_hashes(ctx);
+	} else {
 		int ret = compute_sequence_mse(ctx);
 	}
 
