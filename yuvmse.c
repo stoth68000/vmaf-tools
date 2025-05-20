@@ -442,6 +442,7 @@ int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 	}
 
 	/* Search hashes for input 2 and align with input 1 */
+	int matches = 0;
 	if (inputs > 1) {
 		/* Enumerate all input 1 hashes */
 		for (int h = 0; h < ctx->hash_count[0]; h++) {
@@ -453,6 +454,7 @@ int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 
 					if (hd <= 1) {
 						printf("frame 0.%08d == frame %d.%08d\n", h, i, j);
+						matches++;
 						//break;
 					}
 
@@ -460,6 +462,7 @@ int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 			}
 		}
 	}
+	printf("# hash matches: %d\n", matches);
 
 	for (int i = 0; i < MAX_INPUTS; i++) {
 		if (ctx->fn[i] && ctx->hashes[i]) {
