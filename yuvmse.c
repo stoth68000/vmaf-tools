@@ -411,7 +411,9 @@ int compute_sequence_dct_hashes_input(struct tool_context_s *ctx, int inputnr, u
 
 		hlist[nr] = stats.hash[0];
 
-		printf("frame %08d, hash %" PRIx64 ", %s\n", nr, stats.hash[0], ctx->fn[inputnr]);
+		if (ctx->verbose) {
+			printf("frame %08d, hash %" PRIx64 ", %s\n", nr, stats.hash[0], ctx->fn[inputnr]);
+		}
 
 		nr++;
 	}
@@ -425,6 +427,53 @@ int compute_sequence_dct_hashes_input(struct tool_context_s *ctx, int inputnr, u
 	return 0; /* Success */
 }
 
+/* Function to find the longest matching sequence in two arrays
+ * return number of matches, else -1 on error.
+ * return positions of matching sequence in posA and B
+ */
+static int findLongestMatch(uint64_t *a, uint64_t *b, int len, int *posA, int *posB, int verbose)
+{
+	int maxLen = 0;
+	int startA = 0, startB = 0;
+
+	for (int offset = -len + 1; offset < len; ++offset) {
+		int currentLen = 0;
+		for (int i = 0; i < len; ++i) {
+			int j = i + offset;
+			if (j >= 0 && j < len) {
+				int hd = hamming_distance(a[i], b[j]);
+				if (hd <= 2) {
+					currentLen++;
+					if (currentLen > maxLen) {
+						maxLen = currentLen;
+						startA = i - currentLen + 1;
+						startB = j - currentLen + 1;
+					}
+				} else {
+					currentLen = 0;
+				}
+			}
+		}
+	}
+
+	if (maxLen > 0) {
+		*posA = startA;
+		*posB = startB;
+
+		if (verbose) {
+			printf("Matching sequence: ");
+			for (int i = 0; i < maxLen; ++i) {
+				printf("%" PRIx64 " ", a[startA + i]);
+			}
+			printf("\n");
+		}
+	} else {
+		return -1; /* Error - No matching sequence */
+	}
+
+	return maxLen; /* Success */
+}
+
 int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 {
 	int inputs = 0;
@@ -435,36 +484,39 @@ int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 		}
 	}
 
-	for (int i = 0; i < MAX_INPUTS; i++) {
-		if (ctx->fn[i] && ctx->hashes[i]) {
-			for (int j = 0; j < ctx->hash_count[i]; j++) {
-				printf("frame %08d, hash %" PRIx64 ", %s\n", j, ctx->hashes[i][j], ctx->fn[i]);
+	if (ctx->verbose) {
+		for (int i = 0; i < MAX_INPUTS; i++) {
+			if (ctx->fn[i] && ctx->hashes[i]) {
+				for (int j = 0; j < ctx->hash_count[i]; j++) {
+					printf("frame %08d, hash %" PRIx64 ", %s\n", j, ctx->hashes[i][j], ctx->fn[i]);
+				}
 			}
 		}
 	}
 
 	/* Search hashes for input 2 and align with input 1 */
 	int matches = 0;
+	int match_seq_count = 0;
+	int posA, posB;
 	if (inputs > 1) {
-		/* Enumerate all input 1 hashes */
-		for (int h = 0; h < ctx->hash_count[0]; h++) {
-
-			/* Look for similar hases in other inputs */
-			for (int i = 1; i < inputs; i++) {
-				for (int j = 0; j < ctx->hash_count[i]; j++) {
-					int hd = hamming_distance(ctx->hashes[0][h], ctx->hashes[i][j]);
-
-					if (hd <= 1) {
-						printf("frame 0.%08d == frame %d.%08d\n", h, i, j);
-						matches++;
-						//break;
-					}
-
-				}
-			}
+		matches = findLongestMatch(ctx->hashes[0], ctx->hashes[1], ctx->hash_count[0], &posA, &posB, ctx->verbose);
+	}
+	printf("# hash sequence matches: %d\n", matches);
+	if (matches) {
+		printf("# Frame sequence, file 1 begins frame %08d, file 2 begins frame %08d\n", posA, posB);
+		if (posA > 0) {
+			printf("# Trimming instructions:\n");
+			printf("#   dd if=%s of=%s.trimmed bs=%d skip=%d\n",
+				ctx->fn[0], ctx->fn[0],
+				(ctx->width * ctx->height * 3) / 2, posA);
+		}
+		if (posB > 0) {
+			printf("# Trimming instructions:\n");
+			printf("#   dd if=%s of=%s.trimmed bs=%d skip=%d\n",
+				ctx->fn[1], ctx->fn[1],
+				(ctx->width * ctx->height * 3) / 2, posB);
 		}
 	}
-	printf("# hash matches: %d\n", matches);
 
 	for (int i = 0; i < MAX_INPUTS; i++) {
 		if (ctx->fn[i] && ctx->hashes[i]) {
