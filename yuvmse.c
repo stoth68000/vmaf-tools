@@ -41,7 +41,7 @@ int hamming_distance(uint64_t a, uint64_t b)
 	return __builtin_popcountll(a ^ b);
 }
 
-uint64_t computeDCTHash(const Mat& image)
+uint64_t computeDCTHash(struct tool_context_s *ctx, const Mat& image)
 {
 	Mat resized, floatImage, dctImage;
 
@@ -58,19 +58,21 @@ uint64_t computeDCTHash(const Mat& image)
 
 	int idx = 0;
 	float values[64];
-#if 0
-	printf("DCT 8x8 Block:\n");
-#endif
+
+	if (ctx->verbose) {
+		printf("DCT 8x8 Block:\n");
+	}
+
 	for (int i = 0; i < 8; ++i) {
 		for (int j = 0; j < 8; ++j) {
-#if 0
-			printf("%7.2f ", dctBlock.at<float>(i, j));
-#endif
+			if (ctx->verbose) {
+				printf("%7.2f ", dctBlock.at<float>(i, j));
+			}
 			values[i * 8 + j] = dctBlock.at<float>(i, j);
 		}
-#if 0
-		printf("\n");
-#endif
+		if (ctx->verbose) {
+			printf("\n");
+		}
 	}
 
 	/* Get the high and low medians, be careful not to disrupt
@@ -84,9 +86,9 @@ uint64_t computeDCTHash(const Mat& image)
 
 	float median = (low + high) / 2.0f;
 
-#if 0
-	printf("median %f h %f l %f\n", median, high, low);
-#endif
+	if (ctx->verbose) {
+		printf("median %f h %f l %f\n", median, high, low);
+	}
 
 	/* Compute the hash */
 	uint64_t hash = 0;
@@ -95,9 +97,11 @@ uint64_t computeDCTHash(const Mat& image)
 			hash |= (1ULL << (63 - i));
 		}
 	}
-#if 0
-	printf("DCT Hash: %" PRIx64 "\n", hash);
-#endif
+
+	if (ctx->verbose) {
+		printf("DCT Hash: %" PRIx64 "\n", hash);
+	}
+
 	return hash;
 }
 
@@ -206,8 +210,8 @@ int compute_frame_stats(struct tool_context_s *ctx, unsigned char *b1, unsigned 
 	stats->sharpness[0] = compute_sharpness(y1);
 	stats->sharpness[1] = compute_sharpness(y2);
 
-	stats->hash[0] = computeDCTHash(y1);
-	stats->hash[1] = computeDCTHash(y2);
+	stats->hash[0] = computeDCTHash(ctx, y1);
+	stats->hash[1] = computeDCTHash(ctx, y2);
 
 	return 0; /* Success */
 }
@@ -364,12 +368,12 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 		compute_frame_stats(ctx, b1, b2, &stats);
 
 		if (line == 0) {
-			printf("%8s %9s %9s %9s %9s %9s %9s %9s %27s %17s %8s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp", "DCT Hash", "", "Hamming");
+			printf("%8s %9s %9s %9s %9s %9s %9s %9s %27s %17s %8s %21s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp", "DCT Hash", "", "Hamming", "Hash");
 			printf("\n");
 			printf("%8s %9s %9s %9s %9s %9s %9s %9s %9s", "#     Nr", "Y", "U", "V", "Y", "U", "V", "f1", "f2");
-			printf("%18s %17s %8s", "f1", "f2", "Dist");
+			printf("%18s %17s %8s %21s", "f1", "f2", "Dist", "Assessment");
 			printf("\n");
-			printf("#------------------------------------------------------------------------------------------------------------------------------------\n");
+			printf("#------> <---------------------------> <---------------------------> <-----------------> <---------------------------------------------------------------->\n");
 		}
 
 		if (line++ > 24) {
