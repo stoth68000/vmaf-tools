@@ -380,9 +380,13 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 			stats.y_mse, stats.u_mse, stats.v_mse,
 			stats.y_psnr, stats.u_psnr, stats.v_psnr);
 
-		printf(", %8.2f, %8.2f, %" PRIx64 ", %" PRIx64 ", %7d",
+		int hd = hamming_distance(stats.hash[0], stats.hash[1]);
+
+		printf(", %8.2f, %8.2f, %" PRIx64 ", %" PRIx64 ", %7d, %20s",
 			stats.sharpness[0], stats.sharpness[1], stats.hash[0], stats.hash[1],
-			hamming_distance(stats.hash[0], stats.hash[1]));
+			hd,
+			hd == 0 ? "Exact Match" :
+			hd <= 10 ? "Near Identical" : "Different");
 
 		printf("\n");
 
