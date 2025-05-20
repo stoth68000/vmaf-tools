@@ -36,6 +36,11 @@ static struct {
 	{ 3840, 2160, (1920 * 1080 * 3) / 2, },
 };
 
+int hamming_distance(uint64_t a, uint64_t b)
+{
+	return __builtin_popcountll(a ^ b);
+}
+
 uint64_t computeDCTHash(const Mat& image)
 {
 	Mat resized, floatImage, dctImage;
@@ -359,12 +364,12 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 		compute_frame_stats(ctx, b1, b2, &stats);
 
 		if (line == 0) {
-			printf("%8s %9s %9s %9s %9s %9s %9s %9s %27s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp", "DCT Hash");
+			printf("%8s %9s %9s %9s %9s %9s %9s %9s %27s %17s %8s", "#  Frame", "MSE", "", "", "PSNR", "", "", "Sharp", "DCT Hash", "", "Hamming");
 			printf("\n");
 			printf("%8s %9s %9s %9s %9s %9s %9s %9s %9s", "#     Nr", "Y", "U", "V", "Y", "U", "V", "f1", "f2");
-			printf("%18s %17s", "f1", "f2");
+			printf("%18s %17s %8s", "f1", "f2", "Dist");
 			printf("\n");
-			printf("#---------------------------------------------------------------------------------------------------------------------------\n");
+			printf("#------------------------------------------------------------------------------------------------------------------------------------\n");
 		}
 
 		if (line++ > 24) {
@@ -375,8 +380,9 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 			stats.y_mse, stats.u_mse, stats.v_mse,
 			stats.y_psnr, stats.u_psnr, stats.v_psnr);
 
-		printf(", %8.2f, %8.2f, %" PRIx64 ", %" PRIx64 "",
-			stats.sharpness[0], stats.sharpness[1], stats.hash[0], stats.hash[1]);
+		printf(", %8.2f, %8.2f, %" PRIx64 ", %" PRIx64 ", %7d",
+			stats.sharpness[0], stats.sharpness[1], stats.hash[0], stats.hash[1],
+			hamming_distance(stats.hash[0], stats.hash[1]));
 
 		printf("\n");
 
