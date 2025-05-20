@@ -428,6 +428,7 @@ int compute_sequence_dct_hashes_input(struct tool_context_s *ctx, int inputnr, u
 }
 
 /* Function to find the longest matching sequence in two arrays
+ * Input arrays must be the same length.
  * return number of matches, else -1 on error.
  * return positions of matching sequence in posA and B
  */
@@ -474,6 +475,12 @@ static int findLongestMatch(uint64_t *a, uint64_t *b, int len, int *posA, int *p
 	return maxLen; /* Success */
 }
 
+/* Product DCT hashes for each YUV file.
+ * Put those hashes into lists.
+ * search the lists to find the longest sequence of matches
+ * between YUV frames from different files.
+ * Use this feature to help align random YUV files for the same basic content.
+ */
 int compute_sequence_dct_hashes(struct tool_context_s *ctx)
 {
 	int inputs = 0;
