@@ -15,9 +15,6 @@ using namespace cv;
 struct tool_context_s {
 #define MAX_INPUTS 2
 	char *fn[MAX_INPUTS];
-	int max_cols;
-	int max_rows;
-
 	int verbose;
 	int width;
 	int height;
@@ -405,6 +402,20 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 	return 0;
 }
 
+void args_to_console(struct tool_context_s *ctx)
+{
+	printf("# dimensions: %d x %d\n", ctx->width, ctx->height);
+	for (int i = 0; i < MAX_INPUTS; i++) {
+		if (ctx->fn[i]) {
+			printf("# file%d: %s\n", i, ctx->fn[i]);
+		}
+	}
+	printf("# windowsize: %d\n", ctx->windowsize);
+	printf("# skipframes: %d\n", ctx->skipframes);
+	printf("# bestmatch: %d\n", ctx->bestmatch);
+	printf("# verbose: %d\n", ctx->verbose);
+}
+
 int main(int argc, char *argv[])
 {
 	struct tool_context_s tool_ctx, *ctx = &tool_ctx;
@@ -452,6 +463,7 @@ int main(int argc, char *argv[])
 		usage();
 		exit(1);
 	}
+	args_to_console(ctx);
 
 	ctx->windowsize += ctx->skipframes;
 
