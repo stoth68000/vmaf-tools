@@ -21,17 +21,51 @@ struct tool_context_s {
 	int skipframes;
 	int windowsize;
 	int bestmatch;
+	int dimension_defaults; /* 1, defaults, 0 = user supplied, 2 = detected */
 };
 
 static struct {
 	int width;
 	int height;
 	int frame_size;
+	const char *label;
 } tbl[] = {
-	{ 1280, 720, (1280 * 720 * 3) / 2, },
-	{ 1920, 1080, (1920 * 1080 * 3) / 2, },
-	{ 3840, 2160, (1920 * 1080 * 3) / 2, },
+	{ 1280,  720, (1280 *  720 * 3) / 2,  "1280x720p" },
+	{ 1920, 1080, (1920 * 1080 * 3) / 2, "1920x1080p" },
+	{ 3840, 2160, (3840 * 2160 * 3) / 2, "3840x2160p" },
 };
+
+int detect_frame_size(struct tool_context_s *ctx, int inputnr)
+{
+	int detections = 0;
+	int detected = -1;
+
+	if (ctx->fn[inputnr] == 0) {
+		return -1;
+	}
+
+	struct stat s;
+	if (stat(ctx->fn[inputnr], &s) < 0) {
+		fprintf(stderr, "file input %d not found, aborting\n", inputnr);
+		exit(1);
+	}
+
+	for (int i = 0; i < (sizeof(tbl) / sizeof(tbl[0])); i++) {
+		//printf("i %d, fs %d, size %ld\n", i, tbl[i].frame_size, s.st_size);
+		if (s.st_size % tbl[i].frame_size == 0) {
+			printf("# Detected possible %10s, with exactly %6ld frames in %s\n", tbl[i].label, s.st_size / tbl[i].frame_size, ctx->fn[inputnr]);
+			detections++;
+			detected = i;
+		}
+	}
+
+	if (detections == 1) {
+		return detected;
+	}
+
+	printf("# Operator needs to provide width (-W) and height (-H) args\n");
+	return -1; /* Error */
+}
 
 int hamming_distance(uint64_t a, uint64_t b)
 {
@@ -404,7 +438,9 @@ int compute_sequence_mse(struct tool_context_s *ctx)
 
 void args_to_console(struct tool_context_s *ctx)
 {
-	printf("# dimensions: %d x %d\n", ctx->width, ctx->height);
+	printf("# dimensions: %d x %d (%s)\n", ctx->width, ctx->height,
+		ctx->dimension_defaults == 0 ? "user supplied" : 
+		ctx->dimension_defaults == 1 ? "defaults" : "autodetected");
 	for (int i = 0; i < MAX_INPUTS; i++) {
 		if (ctx->fn[i]) {
 			printf("# file%d: %s\n", i, ctx->fn[i]);
@@ -420,11 +456,12 @@ int main(int argc, char *argv[])
 {
 	struct tool_context_s tool_ctx, *ctx = &tool_ctx;
 	memset(ctx, 0, sizeof(*ctx));
+	ctx->dimension_defaults = 1;
 	ctx->width = 1920;
 	ctx->height = 1080;
 	ctx->windowsize = 30;
 
-	int ch, idx;
+	int ch, idx, ret;
 
 	while ((ch = getopt(argc, argv, "?h1:2:3:4:bs:vw:W:H:")) != -1) {
 		switch (ch) {
@@ -432,6 +469,12 @@ int main(int argc, char *argv[])
 		case '2':
 			idx = ch - '0' - 1;
 			ctx->fn[idx] = strdup(optarg);
+			ret = detect_frame_size(ctx, idx);
+			if (ret == 0) {
+				ctx->width = tbl[ret].width;
+				ctx->height = tbl[ret].height;
+				ctx->dimension_defaults = 2;
+			}
 			break;
 		case 'b':
 			ctx->bestmatch = 1;
@@ -447,9 +490,11 @@ int main(int argc, char *argv[])
 			break;
 		case 'H':
 			ctx->height = atoi(optarg);
+			ctx->dimension_defaults = 0;
 			break;
 		case 'W':
 			ctx->width = atoi(optarg);
+			ctx->dimension_defaults = 0;
 			break;
 		default:
 		case '?':
