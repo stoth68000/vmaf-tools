@@ -5,7 +5,7 @@ BSD licensed.
 * pic2x2 - Read four PNGS and create a single grid combined PNG output.
 * picvmaf - Read vmaf stats files and produce a PNG output, showing core and a red highlight line
 * picdiff - Read two PNGS, compute a grey normalized diff map, output the diffmap to PNG.
-* yuvmse - Read a pair of YUV files and compute the luma MSE per frame.
+* yuvmse - Read a pair of YUV files and compute the luma MSE per frame, also sharness, DCT hases and PSNR details.
 
 ## Assumptions
 * You already have two YUV 420p files, which are frame aligned (by hand). IE, the first frame of each YUV file is from the same point in time, but from a different workflow.
@@ -45,7 +45,7 @@ $ picdiff -n -t0 -1 REF000000.png -2 DIST000000.png -o DIFF000000.png
 $ picdiff -n -t0 -1 REF000001.png -2 DIST000001.png -o DIFF000001.png .... etc
 ```
 
-## 5. Combined the REF/DIST/DIFF/VMAD pngs intoa  single 2x2 grid.
+## 5. Combined the REF/DIST/DIFF/VMAF pngs intoa  single 2x2 grid.
 ```
 $ pic2x2 -t0 -1 REF000000.png -2 DIST000000.png -3 VMAF000000.png -4 DIFF000000.png -o COMPOSITE000000.png
 $ pic2x2 -t0 -1 REF000001.png -2 DIST000001.png -3 VMAF000001.png -4 DIFF000001.png -o COMPOSITE000001.png .... etc
