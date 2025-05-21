@@ -71,6 +71,10 @@ $ ffmpeg -y -r 29.97 -pattern_type glob -i 'COMPOSITE*.png' \
 
 Use yuvmse tool to hash each YUV file, determine where the frames sequences match and provide instructions for trimming the input YUV files to being them into alignment.
 
+Experiment with the -w windowsize for larger search ranges. By default the tool tries to match within 30 frames.
+Experiment with the -s skip frames option, it causes N frames to be discarded from input file #1 before matching begins.
+Go nuts, -w 250, larger search window, it will take longer to compute than the default 30.
+
 Example:
 ```
 root@docker-desktop:/src# ./yuvmse -1 /files/AA60-ac-aligned.yuv -2 /files/bb-ab-nonaligned.yuv -s 5 -D
