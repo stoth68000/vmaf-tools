@@ -8,9 +8,17 @@ BSD licensed.
 * yuvmse - Read a pair of YUV files and compute the luma MSE per frame, also sharpness, DCT hashes and PSNR details.
 
 ## Assumptions
-* You already have two YUV 420p files, which are frame aligned (by hand). IE, the first frame of each YUV file is from the same point in time, but from a different workflow.
+* You already have two YUV 420p files, which are frame aligned (by hand). IE, the first frame of each YUV file is from the same point in time, but from a different workflow. They are YUV420 8bit and 1920x1080
 * reference.yuv
 * distorted.yuv
+* You've already run VMAF across the reference and distored YUV files, the vlaf output is called vmaf.json.
+
+Example:
+```
+$ docker run --rm -v $PWD/yuv:/files vmaf yuv420p 1920 1080 \
+  /files/reference.yuv /files/distorted.yuv \
+  --out-fmt json >vmaf.json
+```
 
 ## 0. Make the container and compile the tools
 ```
