@@ -177,4 +177,8 @@ Typical PSNR values for 8-bit images:
 | 20–30        | Noticeable degradation                        |
 | 20 or less   | Poor quality                                  |
 
+| MSE          | Quality Perception (8 bit image)     |
+| ------------ | ------------------------------------ |
+| higher value | More distortion the higher the value |
+| lower value  | Better quality, typically < 100      |
 
