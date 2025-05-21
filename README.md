@@ -149,7 +149,6 @@ Typical PSNR values for 8-bit images:
 * 20–30 dB: Noticeable degradation
 * less than 20 dB: Poor quality
 
-'''
 | Metric | Measures         | Scale            | Interpretation |
 | ------ | ---------------- | ---------------- | -------------- |
 | VMAF   | Human Perception | Linear           | High = better  |
@@ -157,4 +156,3 @@ Typical PSNR values for 8-bit images:
 | PSNR   | Relative diff    | Logarithmic (dB) | High = better  |
 | Sharp  | Absolute         | Linear           | High = better  |
 | DCT    | Absolute         | Linear           | Low = better   |
-'''
