@@ -143,11 +143,7 @@ root@docker-desktop:/src# ./yuvmse -1 /files/AA60-ac-aligned.yuv -2 /files/bb-ab
 00000006,    11.82,     2.20,     4.11,    37.41,    44.70,    41.99,   207.42,   223.49, de5ea47ce360f202, de5ea47ce360f202,       0,          Exact Match
 ```
 
-Typical PSNR values for 8-bit images:
-* greater than 40 dB: Very high quality (imperceptible differences)
-* 30–40 dB: Good quality
-* 20–30 dB: Noticeable degradation
-* less than 20 dB: Poor quality
+# Metrics
 
 | Metric | Measures         | Scale            | Interpretation |
 | ------ | ---------------- | ---------------- | -------------- |
