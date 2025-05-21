@@ -144,8 +144,8 @@ root@docker-desktop:/src# ./yuvmse -1 /files/AA60-ac-aligned.yuv -2 /files/bb-ab
 ```
 
 Typical PSNR values for 8-bit images:
-* >40 dB: Very high quality (imperceptible differences)
+* greater than 40 dB: Very high quality (imperceptible differences)
 * 30–40 dB: Good quality
 * 20–30 dB: Noticeable degradation
-* <20 dB: Poor quality
+* less than 20 dB: Poor quality
 
