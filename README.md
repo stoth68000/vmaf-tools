@@ -67,9 +67,7 @@ $ ffmpeg -y -r 29.97 -pattern_type glob -i 'COMPOSITE*.png' \
 	-pix_fmt yuv420p side-by-side-comparison.mp4
 ```
 
-## Probes
-
-What happens if you can't figure out how to align the YUV files?
+## Problem - What happens if you can't figure out how to align the YUV files?
 
 Use yuvmse tool to hash each YUV file, determine where the frames sequences match and provide instructions for trimming the input YUV files to being them into alignment.
 
@@ -101,5 +99,53 @@ root@docker-desktop:/src# ./yuvmse -1 /files/AA60-ac-aligned.yuv -2 /files/bb-ab
 # Trimming instructions:
 #   dd if=/files/AA60-ac-aligned.yuv of=/files/AA60-ac-aligned.yuv.trimmed bs=3110400 skip=5
 # Trimming instructions:
-#   dd if=/files/bb-ab-nonaligned.yuv of=/files/abb-ab-nonaligned.yuv.trimmed bs=3110400 skip=5
+#   dd if=/files/bb-ab-nonaligned.yuv of=/files/bb-ab-nonaligned.yuv.trimmed bs=3110400 skip=5
 ```
+
+## Alignment - OK, now the files are aligned, what else can the tools do?
+
+Use yuvmse tool to compute MSE, PSNR, image sharpness and a DCT hash for each file.
+This is useful because a basic PSNR assessment helps you understand the level of distortion
+between a reference.yuv file and distorted.yuv file.
+
+Example:
+```
+root@docker-desktop:/src# ./yuvmse -1 /files/AA60-ac-aligned.yuv -2 /files/bb-ab-aligned.yuv        
+# Detected possible   720x480p, with exactly   8400 frames in /files/AA60-ac-aligned.yuv
+# Detected possible   720x576p, with exactly   7000 frames in /files/AA60-ac-aligned.yuv
+# Detected possible  1280x720p, with exactly   3150 frames in /files/AA60-ac-aligned.yuv
+# Detected possible 1920x1080p, with exactly   1400 frames in /files/AA60-ac-aligned.yuv
+# Detected possible 3840x2160p, with exactly    350 frames in /files/AA60-ac-aligned.yuv
+# Operator needs to provide width (-W) and height (-H) args
+# Detected possible   720x480p, with exactly   8400 frames in /files/bb-ab-aligned.yuv
+# Detected possible   720x576p, with exactly   7000 frames in /files/bb-ab-aligned.yuv
+# Detected possible  1280x720p, with exactly   3150 frames in /files/bb-ab-aligned.yuv
+# Detected possible 1920x1080p, with exactly   1400 frames in /files/bb-ab-aligned.yuv
+# Detected possible 3840x2160p, with exactly    350 frames in /files/bb-ab-aligned.yuv
+# Operator needs to provide width (-W) and height (-H) args
+# dimensions: 1920 x 1080 (defaults)
+# file0: /files/AA60-ac-aligned.yuv
+# file1: /files/bb-ab-aligned.yuv
+# windowsize: 30
+# skipframes: 0
+# bestmatch: 0
+# verbose: 0
+# dcthashmatch: 0
+#  Frame       MSE                          PSNR                         Sharp                    DCT Hash                    Hamming                  Hash
+#     Nr         Y         U         V         Y         U         V        f1        f2                f1                f2     Dist            Assessment
+#------> <---------------------------> <---------------------------> <-----------------> <---------------------------------------------------------------->
+00000000,    12.94,     2.20,     3.96,    37.01,    44.70,    42.16,   189.04,   207.89, df5fad7ce2618100, df5fad7ce2618100,       0,          Exact Match
+00000001,   105.70,     3.81,    10.22,    27.89,    42.32,    38.03,   180.75,   208.92, df7fad7ce0618100, df7fad7ce0618100,       0,          Exact Match
+00000002,    16.29,     2.21,     4.13,    36.01,    44.69,    41.97,   195.97,   231.50, de7fac7ce061a300, de7fac7ce061a300,       0,          Exact Match
+00000003,    11.85,     2.12,     3.53,    37.40,    44.87,    42.65,   209.74,   228.62, de5eac7de061b300, de5eac7de061b300,       0,          Exact Match
+00000004,    89.72,     3.11,     7.82,    28.60,    43.20,    39.20,   197.70,   220.25, de5eac7ce061f300, de5eac7ce261b300,       2,       Near Identical
+00000005,    15.94,     2.11,     4.14,    36.10,    44.89,    41.96,   202.66,   233.69, de5ea47ce161f300, de5ea47ce261f300,       2,       Near Identical
+00000006,    11.82,     2.20,     4.11,    37.41,    44.70,    41.99,   207.42,   223.49, de5ea47ce360f202, de5ea47ce360f202,       0,          Exact Match
+```
+
+Typical PSNR values for 8-bit images:
+* >40 dB: Very high quality (imperceptible differences)
+* 30–40 dB: Good quality
+* 20–30 dB: Noticeable degradation
+* <20 dB: Poor quality
+
