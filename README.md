@@ -66,3 +66,40 @@ $ ffmpeg -y -r 29.97 -pattern_type glob -i 'COMPOSITE*.png' \
 	-c:v libx264 -threads 8 -preset veryfast -b:v 40M \
 	-pix_fmt yuv420p side-by-side-comparison.mp4
 ```
+
+## Probes
+
+What happens if you can't figure out how to align the YUV files?
+
+Use yuvmse tool to hash each YUV file, determine where the frames sequences match and provide instructions for trimming the input YUV files to being them into alignment.
+
+Example:
+```
+root@docker-desktop:/src# ./yuvmse -1 /files/AA60-ac-aligned.yuv -2 /files/bb-ab-nonaligned.yuv -s 5 -D
+# Detected possible   720x480p, with exactly   8400 frames in /files/AA60-ac-aligned.yuv
+# Detected possible   720x576p, with exactly   7000 frames in /files/AA60-ac-aligned.yuv
+# Detected possible  1280x720p, with exactly   3150 frames in /files/AA60-ac-aligned.yuv
+# Detected possible 1920x1080p, with exactly   1400 frames in /files/AA60-ac-aligned.yuv
+# Detected possible 3840x2160p, with exactly    350 frames in /files/AA60-ac-aligned.yuv
+# Operator needs to provide width (-W) and height (-H) args
+# Detected possible   720x480p, with exactly   8400 frames in /files/bb-ab-nonaligned.yuv
+# Detected possible   720x576p, with exactly   7000 frames in /files/bb-ab-nonaligned.yuv
+# Detected possible  1280x720p, with exactly   3150 frames in /files/bb-ab-nonaligned.yuv
+# Detected possible 1920x1080p, with exactly   1400 frames in /files/bb-ab-nonaligned.yuv
+# Detected possible 3840x2160p, with exactly    350 frames in /files/bb-ab-nonaligned.yuv
+# Operator needs to provide width (-W) and height (-H) args
+# dimensions: 1920 x 1080 (defaults)
+# file0: /files/AA60-ac-aligned.yu
+# file1: /files/bb-ab-nonaligned.yuv
+# windowsize: 30
+# skipframes: 5
+# bestmatch: 0
+# verbose: 0
+# dcthashmatch: 1
+# hash sequence matches: 31
+# Frame sequence, file 1 begins frame 00000005, file 2 begins frame 00000005
+# Trimming instructions:
+#   dd if=/files/AA60-ac-aligned.yuv of=/files/AA60-ac-aligned.yuv.trimmed bs=3110400 skip=5
+# Trimming instructions:
+#   dd if=/files/bb-ab-nonaligned.yuv of=/files/abb-ab-nonaligned.yuv.trimmed bs=3110400 skip=5
+```
