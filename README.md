@@ -165,3 +165,8 @@ Typical PSNR values for 8-bit images:
 | **50–70**  | Fair (noticeable degradation)                          |
 | **<50**    | Poor (clearly degraded, possibly distracting)          |
 
+| Sharpness    | Quality Perception              |
+| ------------ | ------------------------------- |
+| higher value | Better                          |
+| lower value  | Softer, blurred or out of focus |
+
