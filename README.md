@@ -156,3 +156,12 @@ Typical PSNR values for 8-bit images:
 | PSNR   | Relative diff    | Logarithmic (dB) | High = better  |
 | Sharp  | Absolute         | Linear           | High = better  |
 | DCT    | Absolute         | Linear           | Low = better   |
+
+| VMAF Score | Quality Perception                                     |
+| ---------- | ------------------------------------------------------ |
+| **90–100** | Excellent (virtually indistinguishable from reference) |
+| **80–90**  | Very good (minor differences, often imperceptible)     |
+| **70–80**  | Good (visible differences, but acceptable)             |
+| **50–70**  | Fair (noticeable degradation)                          |
+| **<50**    | Poor (clearly degraded, possibly distracting)          |
+
