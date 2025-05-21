@@ -20,7 +20,7 @@ $ docker run --rm -v $PWD/yuv:/files vmaf yuv420p 1920 1080 \
   --out-fmt json >vmaf.json
 ```
 
-## 0. Make the container and compile the tools
+## 0. Make the dev container, run it and compile the tools
 ```
 $ make build-devenv
 $ make devenv
@@ -30,8 +30,9 @@ $ make devenv
 
 ## 1. Create the reference and distorted YUV PNGs
 ```
-$ ffmpeg -y -f rawvideo -s 1920x1080 -pixel_format yuv420p -i ../../reference.yuv -f image2 -start_number 0 REF%06d.png
-$ ffmpeg -y -f rawvideo -s 1920x1080 -pixel_format yuv420p -i ../../distorted.yuv -f image2 -start_number 0 DIST%06d.png
+$ cd /files
+$ ffmpeg -y -f rawvideo -s 1920x1080 -pixel_format yuv420p -i /files/reference.yuv -f image2 -start_number 0 REF%06d.png
+$ ffmpeg -y -f rawvideo -s 1920x1080 -pixel_format yuv420p -i /files/distorted.yuv -f image2 -start_number 0 DIST%06d.png
 ```
 
 ## 2. Convert the VMAF json to a specific csv format needed by picvmaf, for example 0-1499 frames
