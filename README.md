@@ -170,3 +170,11 @@ Typical PSNR values for 8-bit images:
 | higher value | Better                          |
 | lower value  | Softer, blurred or out of focus |
 
+| PSNR (dB)    | Quality Perception (8 bit image)              |
+| ------------ | --------------------------------------------- |
+| 40 or higher | Very high quality (imperceptible differences) |
+| 30–40        | Good quality                                  |
+| 20–30        | Noticeable degradation                        |
+| 20 or less   | Poor quality                                  |
+
+
