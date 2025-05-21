@@ -78,6 +78,87 @@ int hamming_distance(uint64_t a, uint64_t b)
 	return __builtin_popcountll(a ^ b);
 }
 
+#if 0
+// a mostly non opencv version of the same func
+uint64_t computeDCTHash(struct tool_context_s *ctx, const Mat& image)
+{
+	Mat resized, floatImage;
+	//Mat resized, floatImage, dctImage;
+
+	/* Get the image down to a meaningful 32x32 sample */
+	resize(image, resized, Size(32, 32), 0, 0, INTER_AREA);
+
+	/* DCT func needs floats, convert to */
+	resized.convertTo(floatImage, CV_32F); // Convert to float for DCT
+
+	float in[32 * 32];
+	float values[8 * 8];
+
+	printf("floatImage:\n");
+	for (int i = 0; i < 32; ++i) {
+		for (int j = 0; j < 32; ++j) {
+			printf("%7.2f, ", floatImage.at<float>(i, j));
+			in[i * 32 + j] = floatImage.at<float>(i, j);
+		}
+		printf("\n");
+	}
+
+	dct2d(in, 32);
+
+	int idx = 0;
+	for (int i = 0; i < 8; ++i) {
+		for (int j = 0; j < 8; ++j) {
+			values[idx++] = in[i * 32 + j];
+		}
+	}
+
+	printf("in:\n");
+	for (int i = 0; i < 8; ++i) {
+		for (int j = 0; j < 32; ++j) {
+			printf("%7.2f ", in[i * 32 + j]);
+		}
+		printf("\n");
+	}
+
+	printf("values:\n");
+	for (int i = 0; i < 8; ++i) {
+		for (int j = 0; j < 8; ++j) {
+			printf("%7.2f ", values[i * 8 + j]);
+		}
+		printf("\n");
+	}
+
+	/* Get the high and low medians, be careful not to disrupt
+	 * the values array, leave them unsorted. */
+	float temp[64];
+	std::copy(values, values + 64, temp);
+	std::nth_element(temp, temp + 31, temp + 64);
+	float low = temp[31];
+	std::nth_element(temp, temp + 32, temp + 64);
+	float high = temp[32];
+
+	float median = (low + high) / 2.0f;
+
+	if (ctx->verbose) {
+		printf("median %f h %f l %f\n", median, high, low);
+	}
+
+	/* Compute the hash */
+	uint64_t hash = 0;
+	for (int i = 0; i < 64; ++i) {
+		if (values[i] > median) {
+			hash |= (1ULL << (63 - i));
+		}
+	}
+
+	if (ctx->verbose) {
+		printf("DCT Hash: %" PRIx64 "\n", hash);
+	}
+
+	return hash;
+}
+#endif
+
 uint64_t computeDCTHash(struct tool_context_s *ctx, const Mat& image)
 {
 	Mat resized, floatImage, dctImage;
@@ -90,7 +171,7 @@ uint64_t computeDCTHash(struct tool_context_s *ctx, const Mat& image)
 	resized.convertTo(floatImage, CV_32F); // Convert to float for DCT
 	dct(floatImage, dctImage);
 
-	/* Get the dct block from the dct'd image */
+	/* Get the dct block top left cols 0..7 and rows 00.77 from the dct'd image */
 	Mat dctBlock = dctImage(Rect(0, 0, 8, 8));
 
 	int idx = 0;
@@ -113,7 +194,7 @@ uint64_t computeDCTHash(struct tool_context_s *ctx, const Mat& image)
 	}
 
 	/* Get the high and low medians, be careful not to disrupt
-	 * the values array, leave them unsorted. */
+	 * the 'values' array, copy and nth_elemtn sort on copy. */
 	float temp[64];
 	std::copy(values, values + 64, temp);
 	std::nth_element(temp, temp + 31, temp + 64);
